@@ -1,97 +1,191 @@
-//server.cpp
 #include "server.hpp"
-        
-using namespace std;
+#include <iostream>
 
-//////////////////////////////////////////////////////////////////////SERVER CLASS
-Server::Server(servUINT listenerPORT ,const std::string &serverAddr , SERVER_TYPE type , SERVER_SUPPORT_IP ip)
+Server::Server(suint serverPortNo , const std::string serverIP , SERVER_DOMAIN sdaf , SERVER_TYPE st)
 {
-    switch(type){
-        case ST_TCP:
-            this->serverType = SOCK_STREAM;
-            break;
-        case ST_UDP:
-            this->serverType = SOCK_DGRAM;
-            break;
-    }
+    //MEMBERLARI TUTUYORUZ ILERIDE ISIMIZE YARAYABILIR
+    this->serverPortNo = serverPortNo;
+    this->serverIP = serverIP;
+    this->sdaf = sdaf;
+    this->st = st;
+    this->colorStr = "";
 
-    switch(ip){
-        case SSI_IPV4: 
-            this->serverSupportIP = AF_INET;
-            break;
-        case SSI_IPV6:
-            this->serverSupportIP = AF_INET6;
-            break;
-    }
-
-    this->serverSupportIP = ip;
-    this->serverAddr = serverAddr;
-    this->serverPort = listenerPORT;
-    
-    if((this->serverFD = socket(serverSupportIP,serverType,0)) == -1){
-        perror("Server socket FAILED");
+    //SERVER SOCKET FD BASLATIYORUZ
+    serverFD = socket(sdaf,st,0);
+    if(serverFD == -1){
+        perror("\n[SERVER-ERROR] : SOCKET = ");
         exit(-1);
     }
 
-    myServer.sin_family = serverSupportIP;
-    myServer.sin_port = htons(listenerPORT);
-    myServer.sin_addr.s_addr = inet_addr(serverAddr.c_str());
-    memset(&myServer.sin_zero,'\0',8);
-}
-
-bool Server::startServer(){
-    if(bind(serverFD,(struct sockaddr*)&myServer,sizeof(myServer)) == -1){
-        perror("startServer FAILED:");
-        return false;
+    //SOKET KERNELDE TAKILI KALMASIN
+    int yes = 1;
+    int setSockOptStatus = setsockopt(serverFD,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int));
+    if(setSockOptStatus == -1){
+        perror("\n[SERVER-ERROR] : SETSOCKOPT = ");
+        exit(-1);
     }
-    return true;
+
+    //SERVERI YAPILANDIRIYORUZ
+    serverConfig.sin_family = sdaf;
+    serverConfig.sin_port = htons(serverPortNo); //NETWORK BYTE ORDERA GORE DUZENLEDIK
+    serverConfig.sin_addr.s_addr = inet_addr(serverIP.c_str());
+    memset(&serverConfig.sin_zero,0,8);
+
+    //PORTU KONFIGURASYONA BAGLAMA
+    int bindStatus = bind(serverFD,(sockaddr*)&serverConfig,sizeof(sockaddr));
+    if(bindStatus == -1){
+        perror("\n[SERVER-ERROR] : BIND = ");
+        exit(-1);
+    }
 }
 
-void Server::addUserConnection(int userFD){
-
-
+Server::~Server(){
+    if(serverFD != -1)
+    close(serverFD);
 }
 
-void Server::showServerInfo() const{
-    cout << "[SERVER-INFO] : SERVER ADRES : " << serverAddr << endl;
-    cout << "[SERVER-INFO] : SERVER PORT  : " << serverPort << endl;
-    cout << "[SERVER-INFO] : SERVER FD    : " << serverFD << endl;
-
-    switch(serverType){
-    case ST_TCP:
-        cout << "[SERVER-INFO] : SERVER TIPI  : " << "TCP" << endl;
-    break;
     
-    case ST_UDP:
-        cout << "[SERVER-INFO] : SERVER TIPI  : " << "UDP" << endl;
-    break;
+void Server::serverListen(){
+    int clientChannelFD;
+    socklen_t acceptSize = sizeof(sockaddr_in);
+    static unsigned short countConnected = 1;
+    char clientName[1024];
+    int recvBytesClientName;
+    std::string infoSendClient(setColorStr("SERVERA BAGLANDINIZ ",SSC_SARI));
+    
+    //SERVER ARTIK GELEN ISTEKLERI DINLEYEBILIR
+    std::cout << setColorStr("\n[SERVER-LOG] : SERVER BASARIYLA BASLATILDI ISTEKLERI DINLIYOR\n",SSC_YESIL,SST_ITALIK);
+    int listenStatus = listen(serverFD,BACKLOG_COUNT);
+    if(listenStatus == -1){
+        perror("\n[SERVER-ERROR] : LISTEN = ");
+        exit(-1);
+    }
+    
+    while(true)
+    {   
+        clientChannelFD = accept(serverFD,(sockaddr*)&clientConfigData,&acceptSize);
+        if(clientChannelFD == -1){
+            perror("\n[SERVER-ERROR] : ACCEPT = ");
+            exit(-1);
+        }
+        //EGER ISTEK KABUL EDILIRSE ESKI ADI SIFIRLA
+        memset(clientName,0,1024);
+
+
+        //ILETISIM KANALI ACILABILDIYSE CLIENTFD'ye EKLEYELIM
+        
+        connectedClientList.push_back(clientChannelFD);
+        recvBytesClientName = recv(clientChannelFD,clientName,sizeof(clientName),0);
+        
+        if(recvBytesClientName == -1){
+            perror("\n[SERVER-ERROR] : ISIM ALINAMADI = ");
+            exit(-1);
+        }
+        std::string *clientNameStr = new std::string(clientName);
+        clientNameMap[clientChannelFD] = *clientNameStr;
+
+        std::cout << setColorStr("[SERVER-LOG-"+std::to_string(countConnected++)+"] : ",SSC_YESIL) << *clientNameStr <<" SERVERA BAGLANDI\n";
+        
+        //BAGLANAN CLIENTA BAGLANDIGI BILGISINI GONDER
+        int sendStatus = send(clientChannelFD, 
+        (infoSendClient + *clientNameStr + "\n").c_str(), 
+        (infoSendClient + *clientNameStr + "\n").length(), 
+        0);
+    
+    delete clientNameStr;
+    // Thread yönetimi için
+    std::thread serverRecvThread(&Server::serverRecvMSG, this, clientChannelFD);
+    serverRecvThread.detach();
     }
 
+    if(clientChannelFD != -1)
+    close(clientChannelFD);
+
+}
+
+//CLIENTIN GONDERDIGI MESAJLARI ALACAGIZ
+//BU FONKSIYON AYRI THREADDE CALISTIRILACAK
+void Server::serverRecvMSG(int clientChannelFD){
+    char buffer[1024];
+    int recvBytes = 0;
+    std::string perrorMSG("\n[SERVER-ERROR] : "+clientNameMap[clientChannelFD]);
+    while(true){ //DIGER MESAJLARI ALACAGIZ
+        memset(buffer,0,1024);
+        recvBytes = recv(clientChannelFD,buffer,sizeof(buffer),0);
+        
+        //MESAJ ALINAMADI
+        if(recvBytes <=  0){
+            if(recvBytes == -1)
+                perror((perrorMSG+" MESAJI ALINAMADI").c_str());                
+            
+            if(recvBytes == 0)
+                perror((perrorMSG+" SERVERDAN AYRILDI").c_str());
+
+
+                //AYRILDIYSA ADINI MAPTEN CIKART VE O ANDA THREADLER AYNI ANDA ERISEMESIN DATA STRUCTSLARA
+                {
+                std::lock_guard lock(mutex);
+                clientNameMap.erase(clientChannelFD);
+                for(int i = 0 ; i < connectedClientList.size() ; i++){
+                    if(connectedClientList[i] == clientChannelFD)
+                    connectedClientList[i] = 0;
+                    }
+                }
+
+                close(clientChannelFD);
+                break;
+        }
+
+        buffer[recvBytes] = '\0';
+        
+        //MESAJ ALINDI SERVERA ALIINDI
+        std::cout << setColorStr("[SERVER-MESSAGE] : ",SSC_SARI) << setColorStr(clientNameMap[clientChannelFD],SSC_MOR) << " ---> " << buffer << "\n";
+
+        //MESAJ SERVERDAN TUM CLIENTLARA GONDERILECEK
+        serverSendALL(clientChannelFD,"GONDERICI : "+setColorStr(clientNameMap[clientChannelFD],SSC_YESIL,SST_ALTICIZGILI)+":::: "+std::string(buffer)+"\n");
+    }
+}
+    
+
+void Server::serverSendALL(int senderClientFD , const std::string &message){
+    std::lock_guard<std::mutex> lock(mutex); //BU SCOPE ORTAK ERISIMDE KILITLER VE OTOMATIK ACAR
+
+    for(int client : connectedClientList){
+        if(client != senderClientFD){
+            int sendStatus = send(client,message.c_str(),message.size(),0);
+            if(sendStatus == -1){
+                perror("[SERVER-ERROR] : DONT SEND ALL = ");
+            }
+        }
+    }
 }
 
 
+void Server::serverInfo(){
+    std::cout << setColorStr("\n-------------------------------------------------------\n");
+    std::cout << setColorStr("[SERVER-INFO]\n",SSC_YESIL,SST_KALIN);
+    std::cout << setColorStr("SERVER KIMLIGI   : ",SSC_MAVI) << serverFD << "\n";
+    std::cout << setColorStr("SERVER PORT NO   : ",SSC_MAVI) << serverPortNo << "\n";
+    std::cout << setColorStr("SERVER IP ADRESI : ",SSC_MAVI) << serverIP << "\n";
 
-//////////////////////////////////////////////////////////////////////ROOM CLASS
-Room::Room(servUINT listenerPORT ,const std::string &serverAddr , SERVER_TYPE type , SERVER_SUPPORT_IP ip , const std::string &roomName)
-: Server(listenerPORT,serverAddr,type,ip)
-{
-    this->roomName = roomName;
-    connectedServerList.clear();
-}     
-
-void Room::addUser(int userFD){
-    connectedServerList.push_back(userFD);
-    cout << this->roomName << " ADLI ODAYA BIRISI GIRIS YAPTI" << endl;
+    
+    if(sdaf == AF_INET)
+    std::cout << setColorStr("SERVER DOMAIN    : ",SSC_MAVI) << "IPV4" << "\n";    
+    else if(sdaf == AF_INET6)
+    std::cout << setColorStr("SERVER DOMAIN    : ",SSC_MAVI) << "IPV6" << "\n";    
+    
+    if(st == SOCK_STREAM)
+    std::cout << setColorStr("SERVER TIP       : ",SSC_MAVI) << "TCP" << "\n";    
+    else if(st == SOCK_DGRAM)
+    std::cout << setColorStr("SERVER TIP       : ",SSC_MAVI) << "UDP" << "\n";    
+    std::cout << setColorStr("-------------------------------------------------------\n\n");
 }
 
-void Room::showRoomInfo() const{
-    showServerInfo();
-    cout << "[ROOM-INFO]   : ODA ADI      : " << this->roomName << endl;
+std::string& Server::setColorStr(const std::string& msg,SERVER_STR_COLORS ssc_renk , SERVER_STR_TYPE sst_type){
+
+    std::string renkKodu = "\033[" + std::to_string(sst_type) + ";" + std::to_string(ssc_renk) + "m";
+    std::string bitisKodu = "\033[0m";
+    colorStr = renkKodu+msg+bitisKodu;
+
+    return colorStr;
 }
-
-void Room::sendMSG_Room(const std::string &message){}
-
-
-
-
-

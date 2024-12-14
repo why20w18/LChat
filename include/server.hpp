@@ -1,78 +1,41 @@
-//server.hpp
-#ifndef __SERVER_H__
-#define __SERVER_H__
+#ifndef __SERVER_HPP__
+#define __SERVER_HPP__
 
-#include <iostream>
-#include <cstdlib>
-#include <cstring>
-#include <vector>
+#include "common.hpp"
+#include "enum.hpp"
+#include <map>
+#include <mutex>
 
-typedef unsigned int servUINT;
-
-//////////////////////////////////////////////////////////////////////PLATFORM BAGIMSIZLIGI
-#ifdef __linux__
-    #include <unistd.h>
-
-    #include <arpa/inet.h>
-    #include <netinet/in.h>
-    #include <netdb.h>
-
-    #include <sys/socket.h>
-    #include <sys/time.h>
-    #include <sys/types.h>
-#endif
-
-#ifdef _WIN32
-    #include <windows.h>
-#endif 
-
-//////////////////////////////////////////////////////////////////////ENUM DEFINES
-enum SERVER_TYPE{
-    ST_TCP,
-    ST_UDP
-};
-
-enum SERVER_SUPPORT_IP{
-    SSI_IPV4,
-    SSI_IPV6
-};
-
-
-
-//////////////////////////////////////////////////////////////////////CLASS DEKLERASYONLARI
 class Server{
-    protected:        
-        struct sockaddr_in myServer;
-    
-        servUINT serverPort;
-    
-        int serverFD; //socket()'in actigi serverin file descriptoru
-        int serverType;
-        int serverSupportIP;
+protected:
+    int serverFD;
+    suint serverPortNo;
 
-        std::string serverAddr;
+    sockaddr_in serverConfig;
+    sockaddr_in clientConfigData;
+    std::string serverIP;
 
-    public:
-        Server(servUINT listenerPORT ,const std::string &serverAddr , SERVER_TYPE type , SERVER_SUPPORT_IP ip);        
-        bool startServer();
-        virtual void addUserConnection(int userFD); //override edilecek Room icinde
-        void showServerInfo() const;
+    SERVER_DOMAIN sdaf;
+    SERVER_TYPE st;
+
+    std::vector<int> connectedClientList;
+    std::map<int,std::string> clientNameMap;
+    std::mutex mutex;   //KITLEME SENKRONIZASYONU ICIN
+
+    std::string colorStr;
+
+public:
+    Server(suint serverPortNo , const std::string serverIP , SERVER_DOMAIN sdaf , SERVER_TYPE st);
+    ~Server();
+
+    void serverInfo();
+    void serverListen();
+    void serverRecvMSG(int clientChannelFD);
+    void serverSendALL(int senderClientFD , const std::string &message);
+    
+    std::string& setColorStr(const std::string& msg,SERVER_STR_COLORS ssc_renk = SSC_KIRMIZI,SERVER_STR_TYPE sst_type = SST_KALIN);
 };
 
 
 
-
-class Room : public Server{
-    private:
-         std::vector<int> connectedServerList;
-         std::string roomName;
-
-    public:
-        Room(servUINT listenerPORT ,const std::string &serverAddr , SERVER_TYPE type , SERVER_SUPPORT_IP ip , const std::string &roomName);        
-        void addUser(int userFD);
-        void showRoomInfo() const;
-        void sendMSG_Room(const std::string &message);
-};
-
-
-#endif 
+#endif //__SERVER_HPP__
