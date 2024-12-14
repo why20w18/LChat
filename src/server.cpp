@@ -93,7 +93,7 @@ void Server::serverListen(){
         0);
     
     delete clientNameStr;
-    // Thread yönetimi için
+
     std::thread serverRecvThread(&Server::serverRecvMSG, this, clientChannelFD);
     serverRecvThread.detach();
     }
@@ -167,6 +167,8 @@ void Server::serverInfo(){
     std::cout << setColorStr("SERVER KIMLIGI   : ",SSC_MAVI) << serverFD << "\n";
     std::cout << setColorStr("SERVER PORT NO   : ",SSC_MAVI) << serverPortNo << "\n";
     std::cout << setColorStr("SERVER IP ADRESI : ",SSC_MAVI) << serverIP << "\n";
+    std::cout << setColorStr("SERVER BACKLOG   : ",SSC_MAVI) << BACKLOG_COUNT << "\n";
+
 
     
     if(sdaf == AF_INET)

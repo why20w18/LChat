@@ -5,10 +5,29 @@ using namespace std;
 
 int main(){
     string message,clientName;
+    suint portNo;
+    std::string ipAdresi;
+    SERVER_DOMAIN sd;
+    SERVER_TYPE st;
+
     cout << "NICKNAME: ";
     getline(cin,clientName);
 
-    Client client(clientName,8080,"127.0.0.1",SD_IPV4,ST_TCP);
+    char yn;
+    cout << "OTOMATIK OLARAK BASLATILSIN MI (y/n) : ";
+    cin >> yn;
+    if(yn == 'y'){
+        ipAdresi = "127.0.0.1";
+        portNo = 8080;
+        sd = SD_IPV4;
+        st = ST_TCP;
+    }
+    else if(yn == 'n'){
+
+        
+    }
+
+    Client client(clientName,portNo,ipAdresi,sd,st);
     client.clientInfo();
     client.clientSendMSG(true); //ISIM SERVERA GONDERILDI
     
