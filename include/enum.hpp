@@ -40,6 +40,7 @@ enum CLIENT_COMMAND{
     CC_EXIT,
     CC_MINFO,
     CC_SINFO,
+    CC_LIST,
     CC_ERROR = -1
 };
 

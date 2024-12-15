@@ -70,6 +70,7 @@ int main(){
                 case CC_EXIT: ccexit(); break;
                 case CC_MINFO: client.clientInfo(); break;
                 case CC_SINFO: ccsinfo(); break; //SERVERDAN GONDER
+                case CC_LIST: break;
               
                 case CC_ERROR:
                 std::cerr << "GECERSIZ KOMUT GIRDINIZ !help KULLANIN\n";
