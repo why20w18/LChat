@@ -4,7 +4,7 @@
 <img src="https://i.imgur.com/AT6gVY2_d.webp?maxwidth=760&fidelity=grand" alt="alt text" width="700" height="500">
 
 ##LChat Server
-<img src="https://i.imgur.com/FUmPuVe_d.webp?maxwidth=760&fidelity=grand" alt="alt text" width="500" height="700">
+<img src="https://i.imgur.com/FUmPuVe_d.webp?maxwidth=760&fidelity=grand" alt="alt text" width="650" height="700">
 
 ##LChat CLIENT-1
 <img src="https://i.imgur.com/5VCHBjU_d.webp?maxwidth=760&fidelity=grand" alt="alt text" width="500" height="700">
