@@ -17,7 +17,7 @@
 
 
 ## LChat CLIENT-3
-<img src="https://i.imgur.com/4EmN9MU_d.webp?maxwidth=760&fidelity=grand" alt="alt text" width="600" height="700">
+<img src="https://i.imgur.com/4EmN9MU_d.webp?maxwidth=760&fidelity=grand" alt="alt text" width="600" height="730">
 
 
 ## C/C++ SOKET PROGRAMLAMA  HAKKINDA:
