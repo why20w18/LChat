@@ -35,5 +35,13 @@ enum SERVER_STR_TYPE{
     SST_REVCOLOR = 7
 };
 
+enum CLIENT_COMMAND{
+    CC_HELP,
+    CC_EXIT,
+    CC_MINFO,
+    CC_SINFO,
+    CC_ERROR = -1
+};
+
 
 #endif //__ENUM_HPP__

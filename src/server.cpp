@@ -1,6 +1,11 @@
 #include "server.hpp"
 #include <iostream>
 
+#include <sstream>
+#include <ctime>
+#include <iomanip>
+
+
 Server::Server(suint serverPortNo , const std::string serverIP , SERVER_DOMAIN sdaf , SERVER_TYPE st)
 {
     //MEMBERLARI TUTUYORUZ ILERIDE ISIMIZE YARAYABILIR
@@ -139,10 +144,16 @@ void Server::serverRecvMSG(int clientChannelFD){
         buffer[recvBytes] = '\0';
         
         //MESAJ ALINDI SERVERA ALIINDI
-        std::cout << setColorStr("[SERVER-MESSAGE] : ",SSC_SARI) << setColorStr(clientNameMap[clientChannelFD],SSC_MOR) << " ---> " << buffer << "\n";
+        std::string timeDamga = getCurrentTime();
+
+        std::cout << setColorStr("["+timeDamga+"][SERVER-MESSAGE] : ",SSC_SARI) << setColorStr(clientNameMap[clientChannelFD],SSC_MOR) << " : " << buffer << "\n";
+
+        if(strcmp(buffer,"!list") == 0){
+            ListFunc(clientChannelFD);
+        }
 
         //MESAJ SERVERDAN TUM CLIENTLARA GONDERILECEK
-        serverSendALL(clientChannelFD,"GONDERICI : "+setColorStr(clientNameMap[clientChannelFD],SSC_YESIL,SST_ALTICIZGILI)+":::: "+std::string(buffer)+"\n");
+        serverSendALL(clientChannelFD,"["+timeDamga+"] "+setColorStr(clientNameMap[clientChannelFD],SSC_YESIL,SST_ALTICIZGILI)+": "+std::string(buffer)+"\n");
     }
 }
     
@@ -183,6 +194,15 @@ void Server::serverInfo(){
     std::cout << setColorStr("-------------------------------------------------------\n\n");
 }
 
+void Server::ListFunc(int clientChannelFD){
+    char *msg = "ONLINE OLANLAR\n";
+    send(clientChannelFD,msg,strlen(msg),0);
+    
+     for(int i = 0 ; i < connectedClientList.size() ; i++){
+        send(clientChannelFD,(clientNameMap[connectedClientList[i]]+"\n").c_str(),clientNameMap[connectedClientList[i]].size()+1,0); 
+    }
+}
+
 std::string& Server::setColorStr(const std::string& msg,SERVER_STR_COLORS ssc_renk , SERVER_STR_TYPE sst_type){
 
     std::string renkKodu = "\033[" + std::to_string(sst_type) + ";" + std::to_string(ssc_renk) + "m";
@@ -191,3 +211,15 @@ std::string& Server::setColorStr(const std::string& msg,SERVER_STR_COLORS ssc_re
 
     return colorStr;
 }
+
+std::string Server::getCurrentTime(){
+    
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_t = std::chrono::system_clock::to_time_t(now);
+    std::tm *local = std::localtime(&now_t);
+    
+    std::ostringstream osstream;
+    osstream << std::put_time(local,"%H:%M:%S");
+    return osstream.str();
+}
+    

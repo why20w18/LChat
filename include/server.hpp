@@ -18,11 +18,14 @@ protected:
     SERVER_DOMAIN sdaf;
     SERVER_TYPE st;
 
-    std::vector<int> connectedClientList;
-    std::map<int,std::string> clientNameMap;
+    
     std::mutex mutex;   //KITLEME SENKRONIZASYONU ICIN
 
     std::string colorStr;
+    std::string& setColorStr(const std::string& msg,SERVER_STR_COLORS ssc_renk = SSC_KIRMIZI,SERVER_STR_TYPE sst_type = SST_KALIN);
+
+    std::vector<int> connectedClientList;
+    std::map<int,std::string> clientNameMap;
 
 public:
     Server(suint serverPortNo , const std::string serverIP , SERVER_DOMAIN sdaf , SERVER_TYPE st);
@@ -32,8 +35,11 @@ public:
     void serverListen();
     void serverRecvMSG(int clientChannelFD);
     void serverSendALL(int senderClientFD , const std::string &message);
-    
-    std::string& setColorStr(const std::string& msg,SERVER_STR_COLORS ssc_renk = SSC_KIRMIZI,SERVER_STR_TYPE sst_type = SST_KALIN);
+
+    void ListFunc(int clientChannelFD);
+    std::string getCurrentTime();
+
+ 
 };
 
 
